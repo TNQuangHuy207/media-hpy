@@ -49,10 +49,11 @@
             background: linear-gradient(45deg, #ff007f, #ff758c, #00ffff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(255, 0, 127, 0.6);
+            text-shadow: 0 0 25px rgba(255, 0, 127, 0.7);
             margin-bottom: 10px;
             font-weight: 800;
             animation: pulseGlow 2s ease-in-out infinite alternate;
+            will-change: transform;
         }
 
         p {
@@ -64,8 +65,8 @@
         }
 
         @keyframes pulseGlow {
-            0% { filter: drop-shadow(0 0 15px rgba(255, 0, 127, 0.8)); transform: scale(1); }
-            100% { filter: drop-shadow(0 0 35px rgba(0, 255, 255, 0.9)); transform: scale(1.02); }
+            0% { transform: scale(1); }
+            100% { transform: scale(1.03); }
         }
 
         .cake-container {
@@ -189,14 +190,14 @@
             height: 20px;
             background: radial-gradient(ellipse at bottom, #ffffff 0%, #ffeb3b 35%, #ff5722 85%);
             border-radius: 50% 50% 20% 20% / 60% 60% 40% 40%;
-            box-shadow: 0 0 15px #ffeb3b, 0 0 30px #ff5722;
+            box-shadow: 0 0 15px #ffeb3b, 0 0 25px #ff5722;
             animation: flicker3D 0.15s infinite alternate ease-in-out;
             transform-origin: center bottom;
         }
 
         @keyframes flicker3D {
             0% { transform: translateX(-50%) scale(1) rotate(-2deg); opacity: 0.95; }
-            100% { transform: translateX(-50%) scale(1.15) rotate(2deg); opacity: 1; filter: brightness(1.2); }
+            100% { transform: translateX(-50%) scale(1.15) rotate(2deg); opacity: 1; }
         }
 
         .instruction {
@@ -290,22 +291,18 @@
             }
 
             draw() {
-                let scale = 1 + this.z * 0.015;
-                scale = Math.max(0.3, scale);
+                let scale = Math.max(0.3, 1 + this.z * 0.015);
+                let currentAlpha = Math.max(0, this.alpha);
 
-                ctx.save();
-                ctx.globalAlpha = Math.max(0, this.alpha);
                 if (this.isSparkle && Math.random() > 0.3) {
-                    ctx.globalAlpha *= 0.4;
+                    currentAlpha *= 0.4;
                 }
 
+                ctx.globalAlpha = currentAlpha;
+                ctx.fillStyle = this.color;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size * scale, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.shadowColor = this.color;
-                ctx.shadowBlur = 12;
                 ctx.fill();
-                ctx.restore();
             }
         }
 
@@ -333,7 +330,7 @@
 
             explode() {
                 this.exploded = true;
-                const particleCount = window.innerWidth < 768 ? 90 : 160;
+                const particleCount = window.innerWidth < 768 ? 70 : 120;
 
                 for (let i = 0; i < particleCount; i++) {
                     let vx, vy, vz = 0;
@@ -401,27 +398,27 @@
                         this.explode();
                     }
                 } else {
-                    this.particles.forEach((p, index) => {
+                    for (let i = this.particles.length - 1; i >= 0; i--) {
+                        const p = this.particles[i];
                         p.update();
                         if (p.alpha <= 0) {
-                            this.particles.splice(index, 1);
+                            this.particles.splice(i, 1);
                         }
-                    });
+                    }
                 }
             }
 
             draw() {
                 if (!this.exploded) {
-                    ctx.save();
+                    ctx.globalAlpha = 1;
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
                     ctx.fillStyle = this.color;
-                    ctx.shadowColor = this.color;
-                    ctx.shadowBlur = 10;
                     ctx.fill();
-                    ctx.restore();
                 } else {
-                    this.particles.forEach(p => p.draw());
+                    for (let i = 0; i < this.particles.length; i++) {
+                        this.particles[i].draw();
+                    }
                 }
             }
         }
@@ -429,6 +426,7 @@
         let fireworks = [];
 
         function launchAutoFirework() {
+            if (fireworks.length > 8) return; // Giới hạn số pháo hoa xuất hiện cùng lúc
             let startX = Math.random() * width;
             let startY = height;
             let endX = Math.random() * (width * 0.8) + width * 0.1;
@@ -438,10 +436,7 @@
 
         function autoLoop() {
             launchAutoFirework();
-            if (Math.random() < 0.4) { 
-                setTimeout(launchAutoFirework, 100);
-            }
-            let nextInterval = Math.random() * 250 + 200;
+            let nextInterval = Math.random() * 350 + 300;
             setTimeout(autoLoop, nextInterval);
         }
 
@@ -452,20 +447,21 @@
         });
 
         function animate() {
-            ctx.fillStyle = 'rgba(2, 2, 8, 0.18)';
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = 'rgba(2, 2, 8, 0.2)';
             ctx.fillRect(0, 0, width, height);
 
             ctx.globalCompositeOperation = 'lighter';
 
-            fireworks.forEach((fw, index) => {
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                const fw = fireworks[i];
                 fw.update();
                 fw.draw();
                 if (fw.exploded && fw.particles.length === 0) {
-                    fireworks.splice(index, 1);
+                    fireworks.splice(i, 1);
                 }
-            });
+            }
 
-            ctx.globalCompositeOperation = 'source-over';
             requestAnimationFrame(animate);
         }
 
